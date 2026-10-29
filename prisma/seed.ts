@@ -166,6 +166,38 @@ async function main() {
   });
   console.log('✅ Seeded Money Leak Radar alert.');
 
+  // 7. Seed Demo Companies (B2B)
+  const apexCompany = await prisma.empresa.create({
+    data: {
+      usuarioId: demoUser.id,
+      nombre: 'Apex Technologies S.A.S.',
+      rfcTaxId: 'ATE210315AB1',
+      giro: 'Desarrollo de Software & Cloud',
+      monedaBase: 'MXN',
+    },
+  });
+
+  const techCat = await prisma.categoria.findFirst({
+    where: { nombre: { contains: 'Tecnología' } },
+  });
+
+  await prisma.gastoEmpresa.create({
+    data: {
+      empresaId: apexCompany.id,
+      registradoPor: demoUser.id,
+      categoriaId: techCat?.id,
+      monto: 14500.00,
+      moneda: 'MXN',
+      descripcion: 'Infraestructura Cloud AWS Producción',
+      fecha: new Date(),
+      metodoPago: PaymentMethod.BANK_TRANSFER,
+      facturaFolio: 'AWS-2026-9812A',
+      departamento: 'TI / Operaciones',
+      notas: 'Servidores EC2 y Base de Datos PostgreSQL',
+    },
+  });
+  console.log('✅ Seeded demo company & business expenses.');
+
   console.log('🎉 Seeding successfully completed!');
 }
 

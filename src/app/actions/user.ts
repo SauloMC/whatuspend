@@ -34,6 +34,36 @@ export async function getCurrentUserAction(): Promise<UserPersona> {
         };
       }
 
+      // Auto-create user in Prisma DB upon first Google OAuth login
+      if (user.email) {
+        const autoCreated = await prisma.user.create({
+          data: {
+            supabaseAuthId: user.id,
+            email: user.email,
+            nombre: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
+            avatarUrl: user.user_metadata?.avatar_url || null,
+            plan: 'PRO_BUSINESS',
+            idioma: 'es',
+            moneda: 'MXN',
+          },
+        }).catch((e) => {
+          console.warn('Auto-create Google user notice:', e.message);
+          return null;
+        });
+
+        if (autoCreated) {
+          return {
+            id: autoCreated.id,
+            nombre: autoCreated.nombre,
+            email: autoCreated.email,
+            avatarUrl: autoCreated.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            plan: autoCreated.plan as any,
+            role: 'OWNER',
+            moneda: autoCreated.moneda,
+          };
+        }
+      }
+
       // If user is authenticated in Supabase but not yet in Prisma, construct persona
       return {
         id: user.id,
@@ -65,3 +95,4 @@ export async function upgradeSimulatedPlanAction(tier: 'PRO_PERSONAL' | 'PRO_BUS
   revalidatePath('/dashboard');
   return { success: true, plan: tier };
 }
+
