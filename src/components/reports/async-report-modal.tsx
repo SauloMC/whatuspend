@@ -6,7 +6,6 @@ import { requestAsyncReportAction } from '@/app/actions/reports';
 import { useReportRealtime } from '@/features/reports/hooks/use-report-realtime';
 import {
   FINANCIAL_REPORTS_CATALOG,
-  FinancialReportMetadata,
 } from '@/domain/services/financial-reports-catalog';
 import { SAMPLE_REPORTS_DATA } from '@/domain/services/report-sample-data';
 import { ReportFormat, ReportType } from '@prisma/client';
@@ -17,8 +16,6 @@ import {
   Download,
   Check,
   Loader2,
-  Lock,
-  ArrowRight,
   Sparkles,
   Eye,
   Info,
@@ -58,8 +55,12 @@ export function AsyncReportModal({
     FINANCIAL_REPORTS_CATALOG.find((r) => r.id === selectedReportId) ||
     FINANCIAL_REPORTS_CATALOG[0];
   const isProReport = currentReportMetadata.tier === 'PRO';
-  const isLockedForUser = isProReport && userPlan === 'FREE';
-  const sampleData = SAMPLE_REPORTS_DATA[selectedReportId] || SAMPLE_REPORTS_DATA.ESTADO_INGRESOS_GASTOS_BASICO!;
+  const isGuestOrDemo = !userId || userId === 'demo-guest' || userId.startsWith('demo-');
+  const isLockedForRealData = !isGuestOrDemo && isProReport && userPlan === 'FREE';
+
+  const sampleData =
+    SAMPLE_REPORTS_DATA[selectedReportId] ||
+    SAMPLE_REPORTS_DATA.ESTADO_INGRESOS_GASTOS_BASICO!;
 
   const filteredReports = FINANCIAL_REPORTS_CATALOG.filter((r) => {
     if (activeTabFilter === 'FREE') return r.tier === 'FREE';
@@ -67,44 +68,38 @@ export function AsyncReportModal({
     return true;
   });
 
-  // Client-side instant sample download (CSV / text format)
-  const downloadSampleFile = () => {
-    const headers = sampleData.columnas.join(',');
-    const rows = sampleData.filas
-      .map((row) => sampleData.columnas.map((col) => `"${row[col] ?? ''}"`).join(','))
-      .join('\n');
-    const totals = Object.entries(sampleData.totales)
-      .map(([k, v]) => `"${k}","${v}"`)
-      .join('\n');
-
-    const csvContent = `${sampleData.titulo}\n${sampleData.periodo}\n\n${headers}\n${rows}\n\nRESUMEN DE TOTALES:\n${totals}\n\nCONCLUSION:\n"${sampleData.conclusionExperto}"\n`;
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${selectedReportId.toLowerCase()}_ejemplo.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  // Downloads REAL .pdf or .xlsx file from server route
+  const triggerSampleDownload = (targetFormato: ReportFormat = formato) => {
+    const url = `/api/reports/download-sample?tipo=${selectedReportId}&formato=${targetFormato}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedReportId.toLowerCase()}_ejemplo.${targetFormato.toLowerCase() === 'excel' ? 'xlsx' : 'pdf'}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // In demo / guest mode, download real sample file in chosen format (PDF or Excel)
+    if (isGuestOrDemo) {
+      setIsSubmitting(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        triggerSampleDownload(formato);
+        onClose();
+      }, 500);
+      return;
+    }
+
+    if (isLockedForRealData) {
+      alert('Para procesar este reporte con los datos reales de tu cuenta, actualiza al plan Pro.');
+      return;
+    }
+
     setIsSubmitting(true);
-
     try {
-      // In guest / demo mode, trigger sample download and show progress pill smoothly
-      if (!userId || userId.startsWith('demo-')) {
-        setTimeout(() => {
-          setIsSubmitting(false);
-          downloadSampleFile();
-          onClose();
-        }, 600);
-        return;
-      }
-
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
@@ -243,9 +238,20 @@ export function AsyncReportModal({
                   {/* Header of selected report */}
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {currentReportMetadata.categoria}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          {currentReportMetadata.categoria}
+                        </span>
+                        <span
+                          className={`rounded px-1.5 py-0.2 text-[10px] font-semibold ${
+                            currentReportMetadata.tier === 'FREE'
+                              ? 'bg-emerald-500/10 text-emerald-500'
+                              : 'bg-primary/10 text-primary'
+                          }`}
+                        >
+                          {currentReportMetadata.tier === 'FREE' ? 'Nivel Gratuito' : 'Nivel Pro'}
+                        </span>
+                      </div>
                       <h4 className="text-base font-semibold text-foreground mt-0.5">
                         {currentReportMetadata.nombre}
                       </h4>
@@ -286,20 +292,33 @@ export function AsyncReportModal({
                   {viewMode === 'PREVIEW' && (
                     <div className="space-y-3.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-foreground">Estructura con datos de ejemplo:</span>
-                        <button
-                          type="button"
-                          onClick={downloadSampleFile}
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-                        >
-                          <Download className="h-3 w-3" />
-                          <span>Descargar ejemplo en CSV</span>
-                        </button>
+                        <span className="font-medium text-foreground">
+                          Estructura con datos de muestra:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => triggerSampleDownload(ReportFormat.PDF)}
+                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Bajar PDF</span>
+                          </button>
+                          <span className="text-muted-foreground/40">•</span>
+                          <button
+                            type="button"
+                            onClick={() => triggerSampleDownload(ReportFormat.EXCEL)}
+                            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-medium"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Bajar Excel</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Sample Data Table */}
                       <div className="rounded-xl border border-border overflow-hidden bg-background/50">
-                        <div className="overflow-x-auto max-h-56">
+                        <div className="overflow-x-auto max-h-52">
                           <table className="w-full text-left text-xs">
                             <thead className="bg-secondary/70 border-b border-border text-[11px] font-medium text-muted-foreground sticky top-0">
                               <tr>
@@ -336,7 +355,7 @@ export function AsyncReportModal({
                       </div>
 
                       <div className="rounded-lg bg-secondary/30 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
-                        <strong className="text-foreground font-medium">Conclusión del análisis: </strong>
+                        <strong className="text-foreground font-medium">Diagnóstico del análisis: </strong>
                         {sampleData.conclusionExperto}
                       </div>
                     </div>
@@ -372,31 +391,33 @@ export function AsyncReportModal({
 
                   {/* Format selector */}
                   <div className="pt-2">
-                    <label className="block text-xs font-medium text-foreground mb-2">Formato de exportación</label>
+                    <label className="block text-xs font-medium text-foreground mb-2">
+                      Formato a descargar
+                    </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setFormato(ReportFormat.PDF)}
-                        className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium border transition ${
+                        className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium border transition ${
                           formato === ReportFormat.PDF
-                            ? 'border-primary bg-primary/10 text-primary'
+                            ? 'border-primary bg-primary/10 text-primary font-semibold'
                             : 'border-border bg-background text-muted-foreground hover:bg-secondary'
                         }`}
                       >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>PDF</span>
+                        <FileText className="h-4 w-4" />
+                        <span>Documento PDF (.pdf)</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setFormato(ReportFormat.EXCEL)}
-                        className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium border transition ${
+                        className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium border transition ${
                           formato === ReportFormat.EXCEL
-                            ? 'border-primary bg-primary/10 text-primary'
+                            ? 'border-primary bg-primary/10 text-primary font-semibold'
                             : 'border-border bg-background text-muted-foreground hover:bg-secondary'
                         }`}
                       >
-                        <Table className="h-3.5 w-3.5" />
-                        <span>Excel</span>
+                        <Table className="h-4 w-4" />
+                        <span>Libro Excel (.xlsx)</span>
                       </button>
                     </div>
                   </div>
@@ -404,20 +425,56 @@ export function AsyncReportModal({
 
                 {/* Footer action */}
                 <div className="p-6 border-t border-border bg-card">
-                  {isLockedForUser ? (
+                  {isGuestOrDemo ? (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerate}
+                        disabled={isSubmitting}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Generando archivo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-3.5 w-3.5" />
+                            <span>
+                              Descargar reporte de ejemplo en {formato === ReportFormat.PDF ? 'PDF' : 'Excel'}
+                            </span>
+                          </>
+                        )}
+                      </button>
+                      <p className="text-[11px] text-muted-foreground text-center">
+                        Descarga libre con datos de prueba. Los usuarios registrados pueden generar reportes automáticos con sus gastos reales.
+                      </p>
+                    </div>
+                  ) : isLockedForRealData ? (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Disponible en el plan Pro</span>
+                        <span>Generar con datos reales requiere plan Pro</span>
                         <span className="font-semibold text-foreground">$4.99 USD / mes</span>
                       </div>
-                      <a
-                        href="/#planes"
-                        onClick={onClose}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        <span>Desbloquear plan Pro</span>
-                      </a>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => triggerSampleDownload(formato)}
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-border py-2 text-xs font-medium hover:bg-secondary transition"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>Bajar muestra</span>
+                        </button>
+                        <a
+                          href="/#planes"
+                          onClick={onClose}
+                          className="flex items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          <span>Actualizar a Pro</span>
+                        </a>
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -429,10 +486,12 @@ export function AsyncReportModal({
                       {isSubmitting ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span>Generando...</span>
+                          <span>Procesando...</span>
                         </>
                       ) : (
-                        <span>Generar reporte</span>
+                        <span>
+                          Generar reporte con mis datos ({formato === ReportFormat.PDF ? 'PDF' : 'Excel'})
+                        </span>
                       )}
                     </button>
                   )}
@@ -474,7 +533,7 @@ export function AsyncReportModal({
           </div>
           <button
             onClick={() => {
-              downloadSampleFile();
+              triggerSampleDownload(formato);
               dismissToast();
             }}
             className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition ml-2"
