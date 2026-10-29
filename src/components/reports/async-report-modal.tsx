@@ -1,7 +1,7 @@
 // src/components/reports/async-report-modal.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { requestAsyncReportAction } from '@/app/actions/reports';
 import { useReportRealtime } from '@/features/reports/hooks/use-report-realtime';
 import {
@@ -46,6 +46,21 @@ export function AsyncReportModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTabFilter, setActiveTabFilter] = useState<'ALL' | 'FREE' | 'PRO'>('ALL');
   const [viewMode, setViewMode] = useState<'CRITERIA' | 'PREVIEW'>('PREVIEW');
+
+  // Sincroniza el reporte inicial seleccionado cuando el usuario abre el modal desde cualquier tarjeta
+  useEffect(() => {
+    if (initialReportId) {
+      setSelectedReportId(initialReportId);
+      const meta = FINANCIAL_REPORTS_CATALOG.find((r) => r.id === initialReportId);
+      if (meta) {
+        if (activeTabFilter === 'FREE' && meta.tier === 'PRO') {
+          setActiveTabFilter('ALL');
+        } else if (activeTabFilter === 'PRO' && meta.tier === 'FREE') {
+          setActiveTabFilter('ALL');
+        }
+      }
+    }
+  }, [initialReportId, isOpen]);
 
   const { activeJob, trackJob, isCompletedToastVisible, dismissToast } = useReportRealtime(userId);
 

@@ -65,7 +65,6 @@ export default function HomePage() {
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#funcionalidades" className="hover:text-foreground transition">Funcionalidades</a>
             <a href="#reportes" className="hover:text-foreground transition">Reportes</a>
-            <a href="#novedades" className="hover:text-foreground transition">Actualizaciones</a>
             <a href="#planes" className="hover:text-foreground transition">Planes</a>
           </nav>
 
@@ -97,20 +96,13 @@ export default function HomePage() {
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground font-normal leading-relaxed">
-              Registra consumos, detecta gastos duplicados o inusuales y obtén reportes financieros listos para contabilidad en PDF y Excel con datos de prueba interactivos.
+              Registra consumos, detecta gastos duplicados o inusuales y obtén reportes financieros listos para contabilidad en PDF y Excel.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3.5">
               <div className="w-full sm:w-auto">
                 <GoogleSignInButton label="Continuar con Google" redirectTo="/dashboard" />
               </div>
-              <button
-                onClick={() => openReportModalWith('ESTADO_INGRESOS_GASTOS_BASICO')}
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition shadow-sm"
-              >
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <span>Ver ejemplos de reportes con datos reales</span>
-              </button>
             </div>
           </div>
 
@@ -123,22 +115,20 @@ export default function HomePage() {
                   <div className="flex rounded-lg bg-secondary p-1 border border-border/50">
                     <button
                       onClick={() => setActiveTab('personal')}
-                      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                        activeTab === 'personal'
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition ${activeTab === 'personal'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                        }`}
                     >
                       <Wallet className="h-3.5 w-3.5" />
                       <span>Personal</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('business')}
-                      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                        activeTab === 'business'
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition ${activeTab === 'business'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                        }`}
                     >
                       <Building2 className="h-3.5 w-3.5" />
                       <span>Empresa</span>
@@ -298,9 +288,8 @@ export default function HomePage() {
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] uppercase font-medium text-muted-foreground">{rep.categoria}</span>
                       <span
-                        className={`rounded px-1.5 py-0.2 text-[10px] font-medium ${
-                          rep.tier === 'FREE' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'
-                        }`}
+                        className={`rounded px-1.5 py-0.2 text-[10px] font-medium ${rep.tier === 'FREE' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'
+                          }`}
                       >
                         {rep.tier === 'FREE' ? 'Gratuito' : 'Pro'}
                       </span>
@@ -326,41 +315,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 5. Section: Novedades & Actualizaciones */}
-        <section id="novedades" className="py-20 border-t border-border bg-secondary/10">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-xl mx-auto mb-12">
-              <span className="text-xs font-medium text-primary uppercase tracking-wider">Historial de versiones</span>
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground mt-2">
-                Registro de actualizaciones
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border bg-card p-5">
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="font-semibold text-foreground">Versión 1.2 — Catálogo de 20 reportes y exportación asíncrona</span>
-                  <span className="text-muted-foreground">Octubre 2026</span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Incorporación de estados de resultados P&L, balance de situación patrimonial, auditoría de micro-gastos y notificaciones en tiempo real para descargas sin bloquear la interfaz.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card p-5">
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="font-semibold text-foreground">Versión 1.1 — Modo B2B Multiempresa</span>
-                  <span className="text-muted-foreground">Septiembre 2026</span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Separación completa de finanzas personales y empresariales con control de folios fiscales, colaboradores y centros de costo.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 6. Pricing Section */}
+        {/* 5. Pricing Section */}
         <section id="planes" className="py-20 border-t border-border bg-secondary/20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-16">
