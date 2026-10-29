@@ -9,6 +9,17 @@ import {
   FinancialReportMetadata,
 } from '@/domain/services/financial-reports-catalog';
 import { ReportFormat, ReportType } from '@prisma/client';
+import {
+  FileText,
+  Table,
+  X,
+  Download,
+  Check,
+  Loader2,
+  Lock,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 
 interface AsyncReportModalProps {
   userId: string;
@@ -35,7 +46,9 @@ export function AsyncReportModal({
 
   if (!isOpen && !activeJob && !isCompletedToastVisible) return null;
 
-  const currentReportMetadata = FINANCIAL_REPORTS_CATALOG.find((r) => r.id === selectedReportId) || FINANCIAL_REPORTS_CATALOG[0];
+  const currentReportMetadata =
+    FINANCIAL_REPORTS_CATALOG.find((r) => r.id === selectedReportId) ||
+    FINANCIAL_REPORTS_CATALOG[0];
   const isProReport = currentReportMetadata.tier === 'PRO';
   const isLockedForUser = isProReport && userPlan === 'FREE';
 
@@ -48,7 +61,7 @@ export function AsyncReportModal({
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLockedForUser) {
-      alert('Este reporte avanzado está disponible exclusivamente en el plan PRO. Mejora tu plan para acceder.');
+      alert('Este reporte está disponible en el plan Pro.');
       return;
     }
 
@@ -71,9 +84,9 @@ export function AsyncReportModal({
 
       if (result.success && result.jobId) {
         trackJob(result.jobId);
-        onClose(); // Close modal immediately - user is free to navigate!
+        onClose();
       } else {
-        alert(result.error || 'Ocurrió un error al encolar el reporte.');
+        alert(result.error || 'No se pudo generar el reporte.');
       }
     } catch (err) {
       console.error(err);
@@ -85,44 +98,40 @@ export function AsyncReportModal({
 
   return (
     <>
-      {/* 1. Modal Dialog for 20 Financial Reports */}
+      {/* 1. Modal Dialog */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
-          <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-card border border-border shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
             
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-border bg-card">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
               <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-bold text-foreground">Catálogo de Salud Financiera</h3>
-                  <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                    20 Reportes Expertos
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  5 Reportes en versión FREE + 15 Reportes de alta dirección, contabilidad y ratios en versión PRO.
+                <h3 className="text-base font-semibold text-foreground">Reportes financieros</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Formatos de análisis contable y financiero exportables en PDF o Excel.
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Body: Split Layout (List + Detail Inspector) */}
+            {/* Body */}
             <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12">
               
-              {/* Left Column: Report List (7 cols) */}
-              <div className="md:col-span-7 border-r border-border flex flex-col overflow-hidden bg-background/50">
-                
+              {/* Left Column: Report List */}
+              <div className="md:col-span-7 border-r border-border flex flex-col overflow-hidden bg-background/40">
                 {/* Filter Tabs */}
-                <div className="p-3 border-b border-border flex gap-2">
+                <div className="p-3 border-b border-border flex gap-1.5">
                   <button
                     onClick={() => setActiveTabFilter('ALL')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                      activeTabFilter === 'ALL' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-secondary'
+                      activeTabFilter === 'ALL'
+                        ? 'bg-secondary text-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     Todos (20)
@@ -130,23 +139,27 @@ export function AsyncReportModal({
                   <button
                     onClick={() => setActiveTabFilter('FREE')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                      activeTabFilter === 'FREE' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:bg-secondary'
+                      activeTabFilter === 'FREE'
+                        ? 'bg-secondary text-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    Plan FREE (5)
+                    Gratuitos (5)
                   </button>
                   <button
                     onClick={() => setActiveTabFilter('PRO')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                      activeTabFilter === 'PRO' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted-foreground hover:bg-secondary'
+                      activeTabFilter === 'PRO'
+                        ? 'bg-secondary text-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    Plan PRO (15) ✨
+                    Pro (15)
                   </button>
                 </div>
 
-                {/* Scrollable list */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {/* List */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
                   {filteredReports.map((report) => {
                     const isSelected = report.id === selectedReportId;
                     const isFree = report.tier === 'FREE';
@@ -156,55 +169,46 @@ export function AsyncReportModal({
                         key={report.id}
                         type="button"
                         onClick={() => setSelectedReportId(report.id)}
-                        className={`w-full text-left p-3.5 rounded-2xl border transition flex items-start justify-between gap-3 ${
+                        className={`w-full text-left p-3 rounded-xl border transition flex items-start justify-between gap-3 ${
                           isSelected
-                            ? 'border-primary bg-primary/10 shadow-sm'
-                            : 'border-border/60 bg-card hover:bg-secondary/70'
+                            ? 'border-primary/50 bg-primary/5'
+                            : 'border-transparent hover:bg-secondary/60'
                         }`}
                       >
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-foreground">{report.nombre}</span>
-                            {isFree ? (
-                              <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">
-                                FREE
-                              </span>
-                            ) : (
-                              <span className="rounded-md bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-bold text-indigo-400">
-                                PRO ✨
-                              </span>
-                            )}
+                            <span className="text-xs font-medium text-foreground">{report.nombre}</span>
+                            <span
+                              className={`rounded px-1.5 py-0.2 text-[10px] font-medium ${
+                                isFree
+                                  ? 'bg-secondary text-muted-foreground'
+                                  : 'bg-primary/10 text-primary'
+                              }`}
+                            >
+                              {isFree ? 'Gratis' : 'Pro'}
+                            </span>
                           </div>
                           <p className="text-[11px] text-muted-foreground line-clamp-1">
                             {report.descripcionCorta}
                           </p>
                         </div>
-                        <span className="text-xs text-muted-foreground/60">{report.categoria}</span>
+                        <span className="text-[10px] text-muted-foreground/70 shrink-0">
+                          {report.categoria}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Right Column: Selected Report Inspection & Generation Form (5 cols) */}
+              {/* Right Column: Selected Report Details & Action */}
               <div className="md:col-span-5 p-6 flex flex-col justify-between overflow-y-auto bg-card">
                 <div className="space-y-5">
                   <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        {currentReportMetadata.categoria}
-                      </span>
-                      {currentReportMetadata.tier === 'FREE' ? (
-                        <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
-                          Incluido en FREE
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                          Exclusivo PRO
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="text-base font-bold text-foreground mt-1">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {currentReportMetadata.categoria}
+                    </span>
+                    <h4 className="text-sm font-semibold text-foreground mt-1">
                       {currentReportMetadata.nombre}
                     </h4>
                     <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
@@ -212,24 +216,24 @@ export function AsyncReportModal({
                     </p>
                   </div>
 
-                  {/* Expert rationale card */}
-                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3.5 space-y-1">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-wide">
-                      💡 Fundamento Experto
+                  {/* Criteria box */}
+                  <div className="rounded-xl border border-border bg-secondary/30 p-3.5 space-y-1">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      Criterio de análisis
                     </span>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+                    <p className="text-xs text-foreground/90 leading-relaxed font-normal">
                       {currentReportMetadata.fundamentoExperto}
                     </p>
                   </div>
 
-                  {/* Key Metrics */}
+                  {/* Metrics */}
                   <div>
-                    <span className="text-xs font-semibold text-foreground">Métricas que calcula:</span>
+                    <span className="text-xs font-medium text-foreground">Métricas calculadas:</span>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {currentReportMetadata.metricasClave.map((m, i) => (
                         <span
                           key={i}
-                          className="rounded-lg bg-secondary px-2.5 py-1 text-[11px] font-medium text-foreground"
+                          className="rounded-md border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground"
                         >
                           {m}
                         </span>
@@ -237,65 +241,66 @@ export function AsyncReportModal({
                     </div>
                   </div>
 
-                  {/* Format selector */}
+                  {/* Format Selector */}
                   <div>
-                    <label className="block text-xs font-semibold text-foreground mb-2">Formato de Descarga</label>
+                    <label className="block text-xs font-medium text-foreground mb-2">Formato</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setFormato(ReportFormat.PDF)}
-                        className={`rounded-xl py-2.5 text-xs font-semibold border transition ${
+                        className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium border transition ${
                           formato === ReportFormat.PDF
                             ? 'border-primary bg-primary/10 text-primary'
                             : 'border-border bg-background text-muted-foreground hover:bg-secondary'
                         }`}
                       >
-                        📄 PDF Ejecutivo
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>PDF</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setFormato(ReportFormat.EXCEL)}
-                        className={`rounded-xl py-2.5 text-xs font-semibold border transition ${
+                        className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium border transition ${
                           formato === ReportFormat.EXCEL
                             ? 'border-primary bg-primary/10 text-primary'
                             : 'border-border bg-background text-muted-foreground hover:bg-secondary'
                         }`}
                       >
-                        📊 Excel (.xlsx)
+                        <Table className="h-3.5 w-3.5" />
+                        <span>Excel</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Email checkbox */}
-                  <div className="flex items-center gap-2 pt-1">
+                  {/* Email option */}
+                  <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       id="reportEmailCheck"
                       checked={enviarEmail}
                       onChange={(e) => setEnviarEmail(e.target.checked)}
-                      className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                      className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
                     />
                     <label htmlFor="reportEmailCheck" className="text-xs text-muted-foreground cursor-pointer">
-                      Avisarme por correo con enlace temporal
+                      Enviar enlace de descarga por correo
                     </label>
                   </div>
                 </div>
 
-                {/* Footer action buttons */}
-                <div className="pt-6 border-t border-border mt-6">
+                {/* Footer action */}
+                <div className="pt-5 border-t border-border mt-5">
                   {isLockedForUser ? (
                     <div className="space-y-2">
-                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
-                        <p className="text-xs font-semibold text-amber-300">
-                          Reporte disponible en WhatUSpend PRO
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Este reporte requiere una suscripción Pro.
+                      </p>
                       <a
                         href="/#planes"
                         onClick={onClose}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-indigo-500 py-3 text-xs font-bold text-white shadow-lg shadow-primary/25 hover:opacity-90 transition"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition"
                       >
-                        Desbloquear 15 Reportes PRO →
+                        <Sparkles className="h-3.5 w-3.5" />
+                        <span>Actualizar a Pro</span>
                       </a>
                     </div>
                   ) : (
@@ -303,9 +308,16 @@ export function AsyncReportModal({
                       type="button"
                       onClick={handleGenerate}
                       disabled={isSubmitting}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-xs font-bold text-white shadow-lg shadow-primary/25 hover:opacity-90 transition disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
                     >
-                      {isSubmitting ? 'Iniciando generación...' : 'Generar en Segundo Plano (HTTP 200)'}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Procesando...</span>
+                        </>
+                      ) : (
+                        <span>Generar reporte</span>
+                      )}
                     </button>
                   )}
                 </div>
@@ -315,52 +327,50 @@ export function AsyncReportModal({
         </div>
       )}
 
-      {/* 2. Floating Realtime Progress Notification Pill */}
+      {/* 2. Floating Notification Pill */}
       {activeJob && activeJob.estado !== 'COMPLETED' && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3.5 rounded-2xl bg-card border border-border p-4 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-4">
-          <div className="relative flex h-8 w-8 items-center justify-center">
-            <span className="animate-spin text-primary">⚙️</span>
-          </div>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-card border border-border p-3.5 shadow-xl backdrop-blur-md">
+          <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs font-semibold text-foreground">Generando reporte contable...</p>
-              <span className="text-[10px] font-mono font-bold text-primary">{activeJob.progreso}%</span>
+              <p className="text-xs font-medium text-foreground">Generando reporte...</p>
+              <span className="text-[10px] font-mono text-muted-foreground">{activeJob.progreso}%</span>
             </div>
-            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-secondary">
+            <div className="h-1 w-44 overflow-hidden rounded-full bg-secondary">
               <div
                 className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${Math.max(10, activeJob.progreso)}%` }}
               />
             </div>
-            <p className="text-[10px] text-muted-foreground">Puedes continuar navegando sin interrupción.</p>
           </div>
         </div>
       )}
 
-      {/* 3. Success Toast with Instant Download Button */}
+      {/* 3. Success Toast */}
       {isCompletedToastVisible && activeJob?.archivoUrl && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-4 rounded-2xl bg-emerald-950/90 border border-emerald-500/30 p-4 shadow-2xl text-white backdrop-blur-md animate-in slide-in-from-bottom-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 text-lg">
-            ✓
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-card border border-border p-3.5 shadow-xl backdrop-blur-md">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 shrink-0">
+            <Check className="h-4 w-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-emerald-200">¡Tu reporte está listo!</h4>
-            <p className="text-[11px] text-emerald-300/80">{activeJob.archivoNombre || 'Archivo compilado exitosamente'}</p>
+            <h4 className="text-xs font-medium text-foreground">Reporte listo</h4>
+            <p className="text-[11px] text-muted-foreground line-clamp-1">{activeJob.archivoNombre || 'Descarga disponible'}</p>
           </div>
           <a
             href={activeJob.archivoUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={dismissToast}
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-bold text-emerald-950 shadow-md hover:bg-emerald-400 transition"
+            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition ml-2"
           >
-            <span>⬇</span> Descargar
+            <Download className="h-3.5 w-3.5" />
+            <span>Descargar</span>
           </a>
           <button
             onClick={dismissToast}
-            className="text-xs text-emerald-400/60 hover:text-emerald-200 transition p-1"
+            className="text-muted-foreground hover:text-foreground transition p-1"
           >
-            ✕
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
