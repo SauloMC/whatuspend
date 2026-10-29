@@ -8,6 +8,7 @@ import {
   FINANCIAL_REPORTS_CATALOG,
   FinancialReportMetadata,
 } from '@/domain/services/financial-reports-catalog';
+import { SAMPLE_REPORTS_DATA } from '@/domain/services/report-sample-data';
 import { ReportFormat, ReportType } from '@prisma/client';
 import {
   FileText,
@@ -19,6 +20,8 @@ import {
   Lock,
   ArrowRight,
   Sparkles,
+  Eye,
+  Info,
 } from 'lucide-react';
 
 interface AsyncReportModalProps {
@@ -27,6 +30,7 @@ interface AsyncReportModalProps {
   userPlan?: 'FREE' | 'PRO_PERSONAL' | 'PRO_BUSINESS';
   isOpen: boolean;
   onClose: () => void;
+  initialReportId?: ReportType;
 }
 
 export function AsyncReportModal({
@@ -35,12 +39,16 @@ export function AsyncReportModal({
   userPlan = 'FREE',
   isOpen,
   onClose,
+  initialReportId,
 }: AsyncReportModalProps) {
-  const [selectedReportId, setSelectedReportId] = useState<ReportType>('ESTADO_INGRESOS_GASTOS_BASICO');
+  const [selectedReportId, setSelectedReportId] = useState<ReportType>(
+    initialReportId || 'ESTADO_INGRESOS_GASTOS_BASICO'
+  );
   const [formato, setFormato] = useState<ReportFormat>(ReportFormat.PDF);
   const [enviarEmail, setEnviarEmail] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTabFilter, setActiveTabFilter] = useState<'ALL' | 'FREE' | 'PRO'>('ALL');
+  const [viewMode, setViewMode] = useState<'CRITERIA' | 'PREVIEW'>('PREVIEW');
 
   const { activeJob, trackJob, isCompletedToastVisible, dismissToast } = useReportRealtime(userId);
 
@@ -51,6 +59,7 @@ export function AsyncReportModal({
     FINANCIAL_REPORTS_CATALOG[0];
   const isProReport = currentReportMetadata.tier === 'PRO';
   const isLockedForUser = isProReport && userPlan === 'FREE';
+  const sampleData = SAMPLE_REPORTS_DATA[selectedReportId] || SAMPLE_REPORTS_DATA.ESTADO_INGRESOS_GASTOS_BASICO!;
 
   const filteredReports = FINANCIAL_REPORTS_CATALOG.filter((r) => {
     if (activeTabFilter === 'FREE') return r.tier === 'FREE';
@@ -58,15 +67,44 @@ export function AsyncReportModal({
     return true;
   });
 
+  // Client-side instant sample download (CSV / text format)
+  const downloadSampleFile = () => {
+    const headers = sampleData.columnas.join(',');
+    const rows = sampleData.filas
+      .map((row) => sampleData.columnas.map((col) => `"${row[col] ?? ''}"`).join(','))
+      .join('\n');
+    const totals = Object.entries(sampleData.totales)
+      .map(([k, v]) => `"${k}","${v}"`)
+      .join('\n');
+
+    const csvContent = `${sampleData.titulo}\n${sampleData.periodo}\n\n${headers}\n${rows}\n\nRESUMEN DE TOTALES:\n${totals}\n\nCONCLUSION:\n"${sampleData.conclusionExperto}"\n`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${selectedReportId.toLowerCase()}_ejemplo.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLockedForUser) {
-      alert('Este reporte está disponible en el plan Pro.');
-      return;
-    }
-
     setIsSubmitting(true);
+
     try {
+      // In guest / demo mode, trigger sample download and show progress pill smoothly
+      if (!userId || userId.startsWith('demo-')) {
+        setTimeout(() => {
+          setIsSubmitting(false);
+          downloadSampleFile();
+          onClose();
+        }, 600);
+        return;
+      }
+
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
@@ -100,15 +138,15 @@ export function AsyncReportModal({
     <>
       {/* 1. Modal Dialog */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4">
+          <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
             
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
               <div>
-                <h3 className="text-base font-semibold text-foreground">Reportes financieros</h3>
+                <h3 className="text-base font-semibold text-foreground">Catálogo de reportes</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Formatos de análisis contable y financiero exportables en PDF o Excel.
+                  Formatos de análisis contable y financiero exportables en PDF y Excel con datos de muestra.
                 </p>
               </div>
               <button
@@ -122,8 +160,8 @@ export function AsyncReportModal({
             {/* Body */}
             <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12">
               
-              {/* Left Column: Report List */}
-              <div className="md:col-span-7 border-r border-border flex flex-col overflow-hidden bg-background/40">
+              {/* Left Column: Report List (5 cols) */}
+              <div className="md:col-span-5 border-r border-border flex flex-col overflow-hidden bg-background/40">
                 {/* Filter Tabs */}
                 <div className="p-3 border-b border-border flex gap-1.5">
                   <button
@@ -192,58 +230,149 @@ export function AsyncReportModal({
                             {report.descripcionCorta}
                           </p>
                         </div>
-                        <span className="text-[10px] text-muted-foreground/70 shrink-0">
-                          {report.categoria}
-                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Right Column: Selected Report Details & Action */}
-              <div className="md:col-span-5 p-6 flex flex-col justify-between overflow-y-auto bg-card">
-                <div className="space-y-5">
-                  <div>
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {currentReportMetadata.categoria}
-                    </span>
-                    <h4 className="text-sm font-semibold text-foreground mt-1">
-                      {currentReportMetadata.nombre}
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                      {currentReportMetadata.descripcionCorta}
-                    </p>
-                  </div>
+              {/* Right Column: Details & Interactive Sample Data Inspector (7 cols) */}
+              <div className="md:col-span-7 flex flex-col justify-between overflow-y-auto bg-card">
+                <div className="p-6 space-y-5">
+                  
+                  {/* Header of selected report */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {currentReportMetadata.categoria}
+                      </span>
+                      <h4 className="text-base font-semibold text-foreground mt-0.5">
+                        {currentReportMetadata.nombre}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {currentReportMetadata.descripcionCorta}
+                      </p>
+                    </div>
 
-                  {/* Criteria box */}
-                  <div className="rounded-xl border border-border bg-secondary/30 p-3.5 space-y-1">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                      Criterio de análisis
-                    </span>
-                    <p className="text-xs text-foreground/90 leading-relaxed font-normal">
-                      {currentReportMetadata.fundamentoExperto}
-                    </p>
-                  </div>
-
-                  {/* Metrics */}
-                  <div>
-                    <span className="text-xs font-medium text-foreground">Métricas calculadas:</span>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {currentReportMetadata.metricasClave.map((m, i) => (
-                        <span
-                          key={i}
-                          className="rounded-md border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground"
-                        >
-                          {m}
-                        </span>
-                      ))}
+                    <div className="flex rounded-lg bg-secondary p-1 shrink-0 border border-border/50">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('PREVIEW')}
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                          viewMode === 'PREVIEW'
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>Vista previa</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('CRITERIA')}
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                          viewMode === 'CRITERIA'
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Info className="h-3 w-3" />
+                        <span>Criterio</span>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Format Selector */}
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-2">Formato</label>
+                  {/* Mode 1: Interactive Sample Data Preview */}
+                  {viewMode === 'PREVIEW' && (
+                    <div className="space-y-3.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-foreground">Estructura con datos de ejemplo:</span>
+                        <button
+                          type="button"
+                          onClick={downloadSampleFile}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>Descargar ejemplo en CSV</span>
+                        </button>
+                      </div>
+
+                      {/* Sample Data Table */}
+                      <div className="rounded-xl border border-border overflow-hidden bg-background/50">
+                        <div className="overflow-x-auto max-h-56">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-secondary/70 border-b border-border text-[11px] font-medium text-muted-foreground sticky top-0">
+                              <tr>
+                                {sampleData.columnas.map((col, idx) => (
+                                  <th key={idx} className="px-3 py-2 font-medium">
+                                    {col}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60 font-mono text-[11px]">
+                              {sampleData.filas.map((row, rIdx) => (
+                                <tr key={rIdx} className="hover:bg-secondary/30 transition">
+                                  {sampleData.columnas.map((col, cIdx) => (
+                                    <td key={cIdx} className="px-3 py-2 text-foreground/90 whitespace-nowrap">
+                                      {row[col] ?? '—'}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Summary totals footer */}
+                        <div className="p-3 bg-secondary/40 border-t border-border flex flex-wrap gap-4 text-xs">
+                          {Object.entries(sampleData.totales).map(([k, v], i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-[11px]">{k}:</span>
+                              <span className="font-semibold text-foreground">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg bg-secondary/30 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
+                        <strong className="text-foreground font-medium">Conclusión del análisis: </strong>
+                        {sampleData.conclusionExperto}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mode 2: Technical Criteria & Explanations */}
+                  {viewMode === 'CRITERIA' && (
+                    <div className="space-y-4">
+                      <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-1.5">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                          Fundamento metodológico
+                        </span>
+                        <p className="text-xs text-foreground/90 leading-relaxed">
+                          {currentReportMetadata.fundamentoExperto}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="text-xs font-medium text-foreground">Métricas calculadas:</span>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {currentReportMetadata.metricasClave.map((m, i) => (
+                            <span
+                              key={i}
+                              className="rounded-md border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground"
+                            >
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Format selector */}
+                  <div className="pt-2">
+                    <label className="block text-xs font-medium text-foreground mb-2">Formato de exportación</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
@@ -271,36 +400,23 @@ export function AsyncReportModal({
                       </button>
                     </div>
                   </div>
-
-                  {/* Email option */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="reportEmailCheck"
-                      checked={enviarEmail}
-                      onChange={(e) => setEnviarEmail(e.target.checked)}
-                      className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
-                    />
-                    <label htmlFor="reportEmailCheck" className="text-xs text-muted-foreground cursor-pointer">
-                      Enviar enlace de descarga por correo
-                    </label>
-                  </div>
                 </div>
 
                 {/* Footer action */}
-                <div className="pt-5 border-t border-border mt-5">
+                <div className="p-6 border-t border-border bg-card">
                   {isLockedForUser ? (
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground text-center">
-                        Este reporte requiere una suscripción Pro.
-                      </p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Disponible en el plan Pro</span>
+                        <span className="font-semibold text-foreground">$4.99 USD / mes</span>
+                      </div>
                       <a
                         href="/#planes"
                         onClick={onClose}
                         className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition"
                       >
                         <Sparkles className="h-3.5 w-3.5" />
-                        <span>Actualizar a Pro</span>
+                        <span>Desbloquear plan Pro</span>
                       </a>
                     </div>
                   ) : (
@@ -313,7 +429,7 @@ export function AsyncReportModal({
                       {isSubmitting ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span>Procesando...</span>
+                          <span>Generando...</span>
                         </>
                       ) : (
                         <span>Generar reporte</span>
@@ -333,7 +449,7 @@ export function AsyncReportModal({
           <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs font-medium text-foreground">Generando reporte...</p>
+              <p className="text-xs font-medium text-foreground">Generando archivo...</p>
               <span className="text-[10px] font-mono text-muted-foreground">{activeJob.progreso}%</span>
             </div>
             <div className="h-1 w-44 overflow-hidden rounded-full bg-secondary">
@@ -356,16 +472,16 @@ export function AsyncReportModal({
             <h4 className="text-xs font-medium text-foreground">Reporte listo</h4>
             <p className="text-[11px] text-muted-foreground line-clamp-1">{activeJob.archivoNombre || 'Descarga disponible'}</p>
           </div>
-          <a
-            href={activeJob.archivoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={dismissToast}
+          <button
+            onClick={() => {
+              downloadSampleFile();
+              dismissToast();
+            }}
             className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition ml-2"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Descargar</span>
-          </a>
+          </button>
           <button
             onClick={dismissToast}
             className="text-muted-foreground hover:text-foreground transition p-1"

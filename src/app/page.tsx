@@ -5,49 +5,73 @@ import React, { useState } from 'react';
 import { AsyncReportModal } from '@/components/reports/async-report-modal';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { formatCurrency } from '@/lib/utils';
+import { createCheckoutSessionAction } from '@/app/actions/stripe';
+import { FINANCIAL_REPORTS_CATALOG } from '@/domain/services/financial-reports-catalog';
+import { ReportType } from '@prisma/client';
 import {
   FileText,
   AlertCircle,
-  TrendingDown,
   Calendar,
-  Layers,
   ArrowRight,
   ShieldCheck,
   Building2,
   Wallet,
   Check,
+  Sparkles,
+  TrendingDown,
+  Repeat,
+  Target,
+  Download,
+  Eye,
 } from 'lucide-react';
 
 export default function HomePage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
+  const [selectedReportForModal, setSelectedReportForModal] = useState<ReportType>('ESTADO_INGRESOS_GASTOS_BASICO');
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState<string | null>(null);
+
+  const openReportModalWith = (reportId: ReportType) => {
+    setSelectedReportForModal(reportId);
+    setIsReportModalOpen(true);
+  };
+
+  const handleCheckout = async (tier: 'PRO_PERSONAL' | 'PRO_BUSINESS') => {
+    setIsCheckoutLoading(tier);
+    try {
+      const res = await createCheckoutSessionAction(tier);
+      if (res.success && res.url) {
+        window.location.href = res.url;
+      } else {
+        alert(res.error || 'No se pudo iniciar el proceso de suscripción.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión con la pasarela de pagos.');
+    } finally {
+      setIsCheckoutLoading(null);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-primary/20">
       {/* 1. Header & Navigation */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 border border-zinc-700 text-sm font-semibold text-zinc-100 shadow-sm">
-              W
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-semibold tracking-tight text-foreground">WhatUSpend</span>
-              <span className="rounded-md border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                Finanzas
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold tracking-tight text-foreground">WhatUSpend</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <a href="#funciones" className="hover:text-foreground transition">Funcionalidades</a>
+            <a href="#funcionalidades" className="hover:text-foreground transition">Funcionalidades</a>
             <a href="#reportes" className="hover:text-foreground transition">Reportes</a>
+            <a href="#novedades" className="hover:text-foreground transition">Actualizaciones</a>
             <a href="#planes" className="hover:text-foreground transition">Planes</a>
           </nav>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsReportModalOpen(true)}
+              onClick={() => openReportModalWith('ESTADO_INGRESOS_GASTOS_BASICO')}
               className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary transition shadow-sm"
             >
               <FileText className="h-3.5 w-3.5 text-muted-foreground" />
@@ -68,17 +92,12 @@ export default function HomePage() {
       <main className="flex-1">
         <section className="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-secondary/50 px-3.5 py-1 text-xs text-muted-foreground mb-8 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Reportes contables con procesamiento en segundo plano
-            </div>
-
             <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl text-foreground">
               Claridad y control sobre tus gastos personales y de empresa
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground font-normal leading-relaxed">
-              Registra consumos, detecta gastos duplicados o inusuales y obtén reportes financieros listos para contabilidad en PDF y Excel.
+              Registra consumos, detecta gastos duplicados o inusuales y obtén reportes financieros listos para contabilidad en PDF y Excel con datos de prueba interactivos.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3.5">
@@ -86,11 +105,11 @@ export default function HomePage() {
                 <GoogleSignInButton label="Continuar con Google" redirectTo="/dashboard" />
               </div>
               <button
-                onClick={() => setIsReportModalOpen(true)}
+                onClick={() => openReportModalWith('ESTADO_INGRESOS_GASTOS_BASICO')}
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition shadow-sm"
               >
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span>Explorar catálogo de 20 reportes</span>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+                <span>Ver ejemplos de reportes con datos reales</span>
               </button>
             </div>
           </div>
@@ -187,11 +206,10 @@ export default function HomePage() {
                     <p className="text-[11px] text-muted-foreground mt-1">Generación y descarga en PDF y Excel</p>
                   </div>
                   <button
-                    onClick={() => setIsReportModalOpen(true)}
+                    onClick={() => openReportModalWith('ESTADO_DE_RESULTADOS')}
                     className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                   >
-                    <span>Generar reporte</span>
-                    <ArrowRight className="h-3 w-3" />
+                    <span>Ver ejemplo de P&L →</span>
                   </button>
                 </div>
               </div>
@@ -199,7 +217,150 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 3. Pricing Section */}
+        {/* 3. Section: Funcionalidades */}
+        <section id="funcionalidades" className="py-20 border-t border-border bg-card/20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <span className="text-xs font-medium text-primary uppercase tracking-wider">Capacidades</span>
+              <h2 className="text-3xl font-semibold tracking-tight text-foreground mt-2">
+                Herramientas diseñadas para tomar mejores decisiones
+              </h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Automatiza el análisis de tus consumos para ahorrar tiempo y proteger tu liquidez.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Feature 1 */}
+              <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
+                <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center">
+                  <TrendingDown className="h-5 w-5" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">Radar de Fugas de Dinero</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Compara tus consumos del mes contra promedios móviles para alertar incrementos anómalos y gastos hormiga antes de que desequilibren tu presupuesto.
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
+                <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center">
+                  <Repeat className="h-5 w-5" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">Detección de Pagos Recurrentes</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Identifica cargos periódicos como plataformas de streaming, telefonía o software, alertándote de cobros próximos para evitar olvidos o renovaciones no deseadas.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
+                <div className="h-9 w-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center">
+                  <Target className="h-5 w-5" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">Metas Financieras con Simulación</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Calcula el ahorro semanal y mensual necesario para tus proyectos y simula cuánto tiempo ganas al moderar ciertas partidas de consumo.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Section: Reportes Destacados con Vista Previa */}
+        <section id="reportes" className="py-20 border-t border-border bg-background">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-end justify-between gap-4 mb-12">
+              <div>
+                <span className="text-xs font-medium text-primary uppercase tracking-wider">Análisis y Auditoría</span>
+                <h2 className="text-3xl font-semibold tracking-tight text-foreground mt-2">
+                  20 Reportes Financieros y Contables
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground max-w-xl">
+                  Explora las estructuras con datos de ejemplo y descarga archivos de prueba en PDF y Excel sin necesidad de registrarte.
+                </p>
+              </div>
+              <button
+                onClick={() => openReportModalWith('ESTADO_INGRESOS_GASTOS_BASICO')}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+              >
+                <span>Ver los 20 formatos en el catálogo →</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {FINANCIAL_REPORTS_CATALOG.slice(0, 8).map((rep) => (
+                <div
+                  key={rep.id}
+                  className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between hover:border-primary/40 transition group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-medium text-muted-foreground">{rep.categoria}</span>
+                      <span
+                        className={`rounded px-1.5 py-0.2 text-[10px] font-medium ${
+                          rep.tier === 'FREE' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'
+                        }`}
+                      >
+                        {rep.tier === 'FREE' ? 'Gratuito' : 'Pro'}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-semibold text-foreground group-hover:text-primary transition">
+                      {rep.nombre}
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2">
+                      {rep.descripcionCorta}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => openReportModalWith(rep.id)}
+                    className="mt-4 flex items-center justify-between pt-3 border-t border-border text-[11px] font-medium text-primary"
+                  >
+                    <span>Ver ejemplo con datos</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 5. Section: Novedades & Actualizaciones */}
+        <section id="novedades" className="py-20 border-t border-border bg-secondary/10">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-xl mx-auto mb-12">
+              <span className="text-xs font-medium text-primary uppercase tracking-wider">Historial de versiones</span>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground mt-2">
+                Registro de actualizaciones
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-card p-5">
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="font-semibold text-foreground">Versión 1.2 — Catálogo de 20 reportes y exportación asíncrona</span>
+                  <span className="text-muted-foreground">Octubre 2026</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Incorporación de estados de resultados P&L, balance de situación patrimonial, auditoría de micro-gastos y notificaciones en tiempo real para descargas sin bloquear la interfaz.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-5">
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="font-semibold text-foreground">Versión 1.1 — Modo B2B Multiempresa</span>
+                  <span className="text-muted-foreground">Septiembre 2026</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Separación completa de finanzas personales y empresariales con control de folios fiscales, colaboradores y centros de costo.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 6. Pricing Section */}
         <section id="planes" className="py-20 border-t border-border bg-secondary/20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-16">
@@ -288,12 +449,14 @@ export default function HomePage() {
                     </li>
                   </ul>
                 </div>
-                <a
-                  href="/dashboard"
-                  className="mt-8 block text-center rounded-xl bg-primary py-2.5 text-xs font-medium text-primary-foreground shadow-sm hover:opacity-90 transition"
+                <button
+                  type="button"
+                  onClick={() => handleCheckout('PRO_PERSONAL')}
+                  disabled={isCheckoutLoading === 'PRO_PERSONAL'}
+                  className="mt-8 block w-full text-center rounded-xl bg-primary py-2.5 text-xs font-medium text-primary-foreground shadow-sm hover:opacity-90 transition disabled:opacity-50"
                 >
-                  Probar 14 días
-                </a>
+                  {isCheckoutLoading === 'PRO_PERSONAL' ? 'Conectando...' : 'Probar 14 días'}
+                </button>
               </div>
 
               {/* Pro Business */}
@@ -333,27 +496,30 @@ export default function HomePage() {
                     </li>
                   </ul>
                 </div>
-                <a
-                  href="/dashboard"
-                  className="mt-8 block text-center rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-secondary transition"
+                <button
+                  type="button"
+                  onClick={() => handleCheckout('PRO_BUSINESS')}
+                  disabled={isCheckoutLoading === 'PRO_BUSINESS'}
+                  className="mt-8 block w-full text-center rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-secondary transition disabled:opacity-50"
                 >
-                  Contactar ventas
-                </a>
+                  {isCheckoutLoading === 'PRO_BUSINESS' ? 'Conectando...' : 'Probar Pro Empresa'}
+                </button>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-      {/* 4. Footer */}
+      {/* 7. Footer */}
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
         <p>© 2026 WhatUSpend. Todos los derechos reservados.</p>
       </footer>
 
-      {/* 5. Asynchronous Report Generator Modal */}
+      {/* 8. Asynchronous Report Generator Modal with Sample Data */}
       <AsyncReportModal
-        userId="demo-user-12345"
+        userId="demo-guest"
         isOpen={isReportModalOpen}
+        initialReportId={selectedReportForModal}
         onClose={() => setIsReportModalOpen(false)}
       />
     </div>
