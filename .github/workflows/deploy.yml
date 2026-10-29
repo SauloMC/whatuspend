@@ -1,0 +1,94 @@
+name: WhatUSpend CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-and-test:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma:generate
+
+      - name: Typecheck TypeScript
+        run: npx tsc --noEmit
+
+      - name: Run Build Test
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+  deploy:
+    name: Automated Deploy to Production
+    needs: validate-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply Database Migrations (Zero-Downtime)
+        run: pnpm prisma:deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      # OPCIÓN A: Si despliegas en Vercel (Recomendado para Next.js)
+      # Descomenta este bloque si usas el CLI de Vercel:
+      # - name: Deploy to Vercel
+      #   uses: amondnet/vercel-action@v25
+      #   with:
+      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      #     vercel-args: '--prod'
+
+      # OPCIÓN B: Si despliegas en VPS / Servidor Propio con Docker vía SSH
+      # Descomenta este bloque si usas un VPS (DigitalOcean / AWS / Hetzner / Coolify):
+      # - name: Deploy to VPS via SSH
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.VPS_HOST }}
+      #     username: ${{ secrets.VPS_USER }}
+      #     key: ${{ secrets.VPS_SSH_KEY }}
+      #     script: |
+      #       cd /var/www/whatuspend
+      #       git pull origin main
+      #       docker compose down
+      #       docker compose up --build -d
