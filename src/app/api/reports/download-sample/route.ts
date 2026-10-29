@@ -274,3 +274,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Error procesando descarga' }, { status: 500 });
   }
 }
+
