@@ -1,0 +1,362 @@
+// prisma/schema.prisma
+// WhatUSpend - Modern Personal & Business Expense Management Platform
+// Clean Architecture & Domain Driven Design Compliant
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum PlanType {
+  FREE
+  PRO_PERSONAL
+  PRO_BUSINESS
+}
+
+enum RoleType {
+  OWNER
+  ADMIN
+  COLLABORATOR
+  VIEWER
+}
+
+enum PaymentMethod {
+  CASH
+  DEBIT_CARD
+  CREDIT_CARD
+  BANK_TRANSFER
+  CRYPTO
+  OTHER
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  BIANNUAL
+  ANNUAL
+}
+
+enum GoalStatus {
+  IN_PROGRESS
+  ACHIEVED
+  CANCELLED
+  PAUSED
+}
+
+enum CategoryType {
+  EXPENSE
+  INCOME
+  TRANSFER
+}
+
+enum LeakSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum ReportType {
+  PERSONAL_EXPENSES
+  COMPANY_EXPENSES
+  ANNUAL_SUMMARY
+  CATEGORY_BREAKDOWN
+  LEAK_AUDIT
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ==========================================
+// DOMAIN MODELS
+// ==========================================
+
+model User {
+  id              String         @id @default(uuid()) @db.Uuid
+  supabaseAuthId  String         @unique @db.VarChar(255)
+  nombre          String         @db.VarChar(120)
+  email           String         @unique @db.VarChar(255)
+  avatarUrl       String?        @db.Text
+  plan            PlanType       @default(FREE)
+  idioma          String         @default("es") @db.VarChar(5)
+  moneda          String         @default("MXN") @db.VarChar(3) // ISO 4217 (MXN, USD, EUR, etc.)
+  
+  // Stripe integration
+  stripeCustomerId       String?   @unique @db.VarChar(255)
+  stripeSubscriptionId   String?   @unique @db.VarChar(255)
+  stripePriceId          String?   @db.VarChar(255)
+  stripeCurrentPeriodEnd DateTime?
+
+  // Relations
+  gastosPersonales    GastoPersonal[]
+  categorias          Categoria[]
+  suscripciones       Suscripcion[]
+  metasFinancieras    MetaFinanciera[]
+  empresasPropias     Empresa[]          @relation("EmpresasPropias")
+  membresiasEmpresas  MiembroEmpresa[]
+  alertasFugas        AlertaFuga[]
+  auditLogs           AuditLog[]
+  reportesJobs        ReportJob[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([supabaseAuthId])
+  @@map("usuarios")
+}
+
+model Categoria {
+  id        String       @id @default(uuid()) @db.Uuid
+  usuarioId String?      @db.Uuid // null = categoría del sistema predeterminada
+  empresaId String?      @db.Uuid // null = personal
+  nombre    String       @db.VarChar(80)
+  tipo      CategoryType @default(EXPENSE)
+  color     String       @default("#64748B") @db.VarChar(20) // Hex or CSS Token
+  icono     String       @default("tag") @db.VarChar(50) // Lucide icon identifier
+  esSistema Boolean      @default(false) @map("es_sistema")
+
+  usuario   User?        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa   Empresa?     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  gastosPersonales GastoPersonal[]
+  gastosEmpresas   GastoEmpresa[]
+  suscripciones    Suscripcion[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([usuarioId, nombre, tipo], name: "unique_categoria_usuario")
+  @@unique([empresaId, nombre, tipo], name: "unique_categoria_empresa")
+  @@index([usuarioId])
+  @@index([empresaId])
+  @@map("categorias")
+}
+
+model GastoPersonal {
+  id            String        @id @default(uuid()) @db.Uuid
+  usuarioId     String        @db.Uuid
+  categoriaId   String?       @db.Uuid
+  monto         Decimal       @db.Decimal(14, 2)
+  moneda        String        @default("MXN") @db.VarChar(3)
+  descripcion   String        @db.VarChar(255)
+  fecha         DateTime      @db.Timestamptz(6)
+  metodoPago    PaymentMethod @default(DEBIT_CARD) @map("metodo_pago")
+  esRecurrente  Boolean       @default(false) @map("es_recurrente")
+  comprobanteUrl String?      @db.Text @map("comprobante_url")
+  notas         String?       @db.Text
+  etiquetas     String[]      @default([])
+
+  // Relaciones
+  usuario       User          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoria     Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  suscripcionId String?       @db.Uuid @map("suscripcion_id")
+  suscripcion   Suscripcion?  @relation(fields: [suscripcionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId, fecha(sort: Desc)])
+  @@index([usuarioId, categoriaId])
+  @@index([fecha])
+  @@map("gastos_personales")
+}
+
+model Empresa {
+  id          String   @id @default(uuid()) @db.Uuid
+  usuarioId   String   @db.Uuid // Dueño creador
+  nombre      String   @db.VarChar(120)
+  logoUrl     String?  @db.Text @map("logo_url")
+  giro        String   @db.VarChar(120)
+  rfcTaxId    String?  @db.VarChar(50) @map("rfc_tax_id")
+  monedaBase  String   @default("MXN") @db.VarChar(3) @map("moneda_base")
+
+  // Relaciones
+  propietario User            @relation("EmpresasPropias", fields: [usuarioId], references: [id], onDelete: Restrict)
+  miembros    MiembroEmpresa[]
+  gastos      GastoEmpresa[]
+  categorias  Categoria[]
+  auditLogs   AuditLog[]
+  reportesJobs ReportJob[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId])
+  @@map("empresas")
+}
+
+model MiembroEmpresa {
+  id        String   @id @default(uuid()) @db.Uuid
+  empresaId String   @db.Uuid @map("empresa_id")
+  usuarioId String   @db.Uuid @map("usuario_id")
+  rol       RoleType @default(COLLABORATOR)
+
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuario   User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([empresaId, usuarioId])
+  @@index([usuarioId])
+  @@index([empresaId])
+  @@map("miembros_empresa")
+}
+
+model GastoEmpresa {
+  id             String        @id @default(uuid()) @db.Uuid
+  empresaId      String        @db.Uuid @map("empresa_id")
+  registradoPor  String        @db.Uuid @map("registrado_por")
+  categoriaId    String?       @db.Uuid @map("categoria_id")
+  monto          Decimal       @db.Decimal(14, 2)
+  moneda         String        @default("MXN") @db.VarChar(3)
+  descripcion    String        @db.VarChar(255)
+  fecha          DateTime      @db.Timestamptz(6)
+  metodoPago     PaymentMethod @default(BANK_TRANSFER) @map("metodo_pago")
+  facturaFolio   String?       @db.VarChar(100) @map("factura_folio")
+  comprobanteUrl String?       @db.Text @map("comprobante_url")
+  departamento   String?       @db.VarChar(80)
+  notas          String?       @db.Text
+
+  empresa        Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([empresaId, fecha(sort: Desc)])
+  @@index([empresaId, categoriaId])
+  @@map("gastos_empresa")
+}
+
+model Suscripcion {
+  id              String              @id @default(uuid()) @db.Uuid
+  usuarioId       String              @db.Uuid @map("usuario_id")
+  categoriaId     String?             @db.Uuid @map("categoria_id")
+  proveedor       String              @db.VarChar(100)
+  monto           Decimal             @db.Decimal(12, 2)
+  moneda          String              @default("MXN") @db.VarChar(3)
+  frecuencia      RecurrenceFrequency @default(MONTHLY)
+  proximaFecha    DateTime?           @db.Date @map("proxima_fecha")
+  activa          Boolean             @default(true)
+  esDetectadaAuto Boolean             @default(false) @map("es_detectada_auto")
+
+  usuario         User                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoria       Categoria?          @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  gastosAsociados GastoPersonal[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId, activa])
+  @@map("suscripciones")
+}
+
+model MetaFinanciera {
+  id            String     @id @default(uuid()) @db.Uuid
+  usuarioId     String     @db.Uuid @map("usuario_id")
+  nombre        String     @db.VarChar(120)
+  montoObjetivo Decimal    @db.Decimal(14, 2) @map("monto_objetivo")
+  montoActual   Decimal    @default(0.00) @db.Decimal(14, 2) @map("monto_actual")
+  moneda        String     @default("MXN") @db.VarChar(3)
+  fechaMeta     DateTime   @db.Date @map("fecha_meta")
+  icono         String     @default("target") @db.VarChar(50)
+  color         String     @default("#10B981") @db.VarChar(20)
+  estado        GoalStatus @default(IN_PROGRESS)
+
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId, estado])
+  @@map("metas_financieras")
+}
+
+model AlertaFuga {
+  id          String       @id @default(uuid()) @db.Uuid
+  usuarioId   String       @db.Uuid @map("usuario_id")
+  categoriaId String?      @db.Uuid @map("categoria_id")
+  titulo      String       @db.VarChar(160)
+  mensaje     String       @db.Text
+  severidad   LeakSeverity @default(INFO)
+  montoImpacto Decimal?    @db.Decimal(12, 2) @map("monto_impacto")
+  leida       Boolean      @default(false)
+
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([usuarioId, leida])
+  @@map("alertas_fugas")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  usuarioId  String?  @db.Uuid @map("usuario_id")
+  empresaId  String?  @db.Uuid @map("empresa_id")
+  accion     String   @db.VarChar(60) // "GASTO_CREADO", "PLAN_UPGRADE", "EMPRESA_EDITADA"
+  entidad    String   @db.VarChar(60) // "GastoPersonal", "User", "Empresa"
+  entidadId  String?  @db.VarChar(255) @map("entidad_id")
+  detalles   Json?    @db.JsonB
+  ipAddress  String?  @db.VarChar(45) @map("ip_address")
+  userAgent  String?  @db.Text @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  usuario User?    @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, createdAt])
+  @@index([empresaId, createdAt])
+  @@map("audit_logs")
+}
+
+model ReportJob {
+  id              String       @id @default(uuid()) @db.Uuid
+  usuarioId       String       @db.Uuid @map("usuario_id")
+  empresaId       String?      @db.Uuid @map("empresa_id")
+  tipo            ReportType   @default(PERSONAL_EXPENSES)
+  formato         ReportFormat @default(PDF)
+  parametros      Json?        @db.JsonB
+  estado          ReportStatus @default(PENDING)
+  progreso        Int          @default(0) // 0-100%
+  archivoUrl      String?      @db.Text @map("archivo_url")
+  archivoNombre   String?      @db.VarChar(255) @map("archivo_nombre")
+  tamanoBytes     Int?         @map("tamano_bytes")
+  expiraEn        DateTime?    @db.Timestamptz(6) @map("expira_en")
+  error           String?      @db.Text
+  notificadoEmail Boolean      @default(false) @map("notificado_email")
+
+  usuario User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId, estado])
+  @@index([createdAt])
+  @@map("reportes_jobs")
+}
+

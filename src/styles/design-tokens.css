@@ -1,0 +1,96 @@
+/* src/styles/design-tokens.css */
+/* WhatUSpend Design System - Inspired by Linear, Stripe, Revolut & Notion */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand Foundation */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    /* Card & Surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary Accent (Stripe/Linear Indigo) */
+    --primary: 243 75% 59%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary (Subtle cool slate) */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+
+    /* Muted Texts & Dividers */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Interactive States & Badges */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
+
+    /* Destructive (Errors & Critical Alerts) */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders & Inputs */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 243 75% 59%;
+
+    /* Fintech Semantic Tokens */
+    --income: 142 71% 45%;         /* Emerald green */
+    --income-subtle: 138 76% 97%;
+    --expense: 0 84% 60%;          /* Coral red */
+    --expense-subtle: 0 100% 97%;
+    --leak-warning: 38 92% 50%;    /* Amber warning */
+    --leak-critical: 0 84% 60%;    /* Red critical */
+    --leak-info: 199 89% 48%;      /* Cyan info */
+
+    --radius: 0.75rem; /* Modern rounded corners */
+  }
+
+  .dark {
+    /* Deep OLED & Dark Slate (Linear & Vercel aesthetics) */
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 243 75% 65%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217.2 32.6% 14%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 14%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 15%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 243 75% 65%;
+
+    /* Dark Mode Fintech Semantic Tokens */
+    --income: 142 71% 52%;
+    --income-subtle: 142 71% 10%;
+    --expense: 0 84% 65%;
+    --expense-subtle: 0 84% 12%;
+    --leak-warning: 38 92% 58%;
+    --leak-critical: 0 84% 65%;
+    --leak-info: 199 89% 58%;
+  }
+}
+
