@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { AsyncReportModal } from '@/components/reports/async-report-modal';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { formatCurrency } from '@/lib/utils';
 
 export default function HomePage() {
@@ -73,17 +74,14 @@ export default function HomePage() {
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <a
-                href="/dashboard"
-                className="rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:opacity-95 transition"
-              >
-                Comenzar Gratis (Sin tarjeta)
-              </a>
+              <div className="w-full sm:w-auto max-w-xs">
+                <GoogleSignInButton label="Iniciar con Google" redirectTo="/dashboard" />
+              </div>
               <button
                 onClick={() => setIsReportModalOpen(true)}
                 className="rounded-xl border border-border bg-card px-6 py-3.5 text-sm font-semibold text-foreground hover:bg-secondary transition shadow-sm"
               >
-                Probar Generación de Reporte Async
+                Probar Catálogo de 20 Reportes
               </button>
             </div>
           </div>

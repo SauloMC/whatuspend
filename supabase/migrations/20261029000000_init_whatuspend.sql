@@ -15,7 +15,28 @@ CREATE TYPE "RecurrenceFrequency" AS ENUM ('DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTH
 CREATE TYPE "GoalStatus" AS ENUM ('IN_PROGRESS', 'ACHIEVED', 'CANCELLED', 'PAUSED');
 CREATE TYPE "CategoryType" AS ENUM ('EXPENSE', 'INCOME', 'TRANSFER');
 CREATE TYPE "LeakSeverity" AS ENUM ('INFO', 'WARNING', 'CRITICAL');
-CREATE TYPE "ReportType" AS ENUM ('PERSONAL_EXPENSES', 'COMPANY_EXPENSES', 'ANNUAL_SUMMARY', 'CATEGORY_BREAKDOWN', 'LEAK_AUDIT');
+CREATE TYPE "ReportType" AS ENUM (
+    'ESTADO_INGRESOS_GASTOS_BASICO',
+    'DISTRIBUCION_CATEGORIAS',
+    'AUDITORIA_FUGAS_GASTOS_HORMIGA',
+    'PROYECCION_METAS_AHORRO',
+    'CALENDARIO_VENCIMIENTO_GASTOS',
+    'ESTADO_DE_RESULTADOS',
+    'BALANCE_GENERAL',
+    'ESTADO_FLUJO_EFECTIVO',
+    'RATIOS_LIQUIDEZ_SOLVENCIA',
+    'REGLA_PRESUPUESTO_50_30_20',
+    'TASA_AHORRO_LIBERTAD_FINANCIERA',
+    'CONCILIACION_FISCAL_DEDUCIBLES',
+    'COSTO_TOTAL_SUSCRIPCIONES_ANUALIZADO',
+    'ESTADO_PATRIMONIAL_NET_WORTH',
+    'GASTOS_POR_DEPARTAMENTO_CENTRO_COSTOS',
+    'ANALISIS_VARIACION_PRESUPUESTAL',
+    'RENTABILIDAD_UNITARIA_Y_MARGENES',
+    'DIAGNOSTICO_ENDEUDAMIENTO_DTI',
+    'SIMULADOR_FISCAL_PROYECTADO',
+    'INFORME_EJECUTIVO_CONSEJO_ADMINISTRACION'
+);
 CREATE TYPE "ReportFormat" AS ENUM ('PDF', 'EXCEL');
 CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED');
 
@@ -184,7 +205,7 @@ CREATE TABLE public.reportes_jobs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     usuario_id UUID NOT NULL REFERENCES public.usuarios(id) ON DELETE CASCADE,
     empresa_id UUID REFERENCES public.empresas(id) ON DELETE SET NULL,
-    tipo "ReportType" NOT NULL DEFAULT 'PERSONAL_EXPENSES',
+    tipo "ReportType" NOT NULL DEFAULT 'ESTADO_INGRESOS_GASTOS_BASICO',
     formato "ReportFormat" NOT NULL DEFAULT 'PDF',
     parametros JSONB DEFAULT '{}'::jsonb,
     estado "ReportStatus" NOT NULL DEFAULT 'PENDING',
@@ -372,5 +393,43 @@ CREATE POLICY "Users can CRUD own report jobs"
 -- Expose public.reportes_jobs to Supabase Realtime channel so connected clients
 -- receive instantaneous WebSocket notifications when their report reaches COMPLETED status.
 ALTER PUBLICATION supabase_realtime ADD TABLE public.reportes_jobs;
+
+-- 9. SUPABASE STORAGE BUCKETS & POLICIES FOR USER AVATARS & COMPANY LOGOS
+INSERT INTO storage.buckets (id, name, public) 
+VALUES 
+    ('avatars', 'avatars', true),
+    ('company-logos', 'company-logos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Public read access for avatars and company logos
+CREATE POLICY "Public read for avatars"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'avatars');
+
+CREATE POLICY "Public read for company logos"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'company-logos');
+
+-- Authenticated upload for avatars
+CREATE POLICY "Authenticated users can upload avatar"
+    ON storage.objects FOR INSERT
+    WITH CHECK (
+        bucket_id = 'avatars' AND 
+        auth.role() = 'authenticated'
+    );
+
+-- Authenticated update/delete for avatars
+CREATE POLICY "Users can update own avatar"
+    ON storage.objects FOR UPDATE
+    USING (bucket_id = 'avatars' AND auth.role() = 'authenticated');
+
+-- Authenticated upload for company logos
+CREATE POLICY "Authenticated users can upload company logo"
+    ON storage.objects FOR INSERT
+    WITH CHECK (
+        bucket_id = 'company-logos' AND 
+        auth.role() = 'authenticated'
+    );
+
 
 

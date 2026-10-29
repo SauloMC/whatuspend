@@ -69,11 +69,29 @@ enum LeakSeverity {
 }
 
 enum ReportType {
-  PERSONAL_EXPENSES
-  COMPANY_EXPENSES
-  ANNUAL_SUMMARY
-  CATEGORY_BREAKDOWN
-  LEAK_AUDIT
+  // --- 5 REPORTES PLAN FREE (Salud Financiera Personal Esencial) ---
+  ESTADO_INGRESOS_GASTOS_BASICO
+  DISTRIBUCION_CATEGORIAS
+  AUDITORIA_FUGAS_GASTOS_HORMIGA
+  PROYECCION_METAS_AHORRO
+  CALENDARIO_VENCIMIENTO_GASTOS
+
+  // --- 15 REPORTES PLAN PRO (Contabilidad, Empresas, Ratios & Patrimonio) ---
+  ESTADO_DE_RESULTADOS                  // P&L / Estado de Pérdidas y Ganancias
+  BALANCE_GENERAL                       // Balance Sheet / Situación Financiera
+  ESTADO_FLUJO_EFECTIVO                 // Cash Flow Statement (Operativo, Inversión, Finanzas)
+  RATIOS_LIQUIDEZ_SOLVENCIA             // Quick Ratio, Current Ratio, Runway
+  REGLA_PRESUPUESTO_50_30_20            // Auditoría 50% Necesidades / 30% Deseos / 20% Ahorro
+  TASA_AHORRO_LIBERTAD_FINANCIERA       // Tasa real y años proyectados según regla 4% FIRE
+  CONCILIACION_FISCAL_DEDUCIBLES        // Gastos con comprobante y folio fiscal para contador
+  COSTO_TOTAL_SUSCRIPCIONES_ANUALIZADO  // Auditoría anualizada de cobros recurrentes y fantasma
+  ESTADO_PATRIMONIAL_NET_WORTH          // Evolución histórica de activos vs pasivos
+  GASTOS_POR_DEPARTAMENTO_CENTRO_COSTOS // Centros de costo empresariales (Marketing, Ops, etc.)
+  ANALISIS_VARIACION_PRESUPUESTAL       // Presupuestado vs Real con semáforos de tolerancia
+  RENTABILIDAD_UNITARIA_Y_MARGENES      // Margen de contribución y punto de equilibrio (Break-even)
+  DIAGNOSTICO_ENDEUDAMIENTO_DTI         // Debt-to-Income Ratio y capacidad de apalancamiento
+  SIMULADOR_FISCAL_PROYECTADO           // Estimación proyectada de retenciones e impuestos
+  INFORME_EJECUTIVO_CONSEJO_ADMINISTRACION // Board Deck PDF consolidado para socios e inversores
 }
 
 enum ReportFormat {
@@ -337,7 +355,7 @@ model ReportJob {
   id              String       @id @default(uuid()) @db.Uuid
   usuarioId       String       @db.Uuid @map("usuario_id")
   empresaId       String?      @db.Uuid @map("empresa_id")
-  tipo            ReportType   @default(PERSONAL_EXPENSES)
+  tipo            ReportType   @default(ESTADO_INGRESOS_GASTOS_BASICO)
   formato         ReportFormat @default(PDF)
   parametros      Json?        @db.JsonB
   estado          ReportStatus @default(PENDING)
