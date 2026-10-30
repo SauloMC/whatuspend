@@ -158,3 +158,4 @@ La aplicación móvil representa la siguiente etapa de WhatUSpend. Al tener el b
    - Configuración de `expo-notifications` para recibir avisos instantáneos cuando el Radar detecte un gasto hormiga o el vencimiento de una suscripción.
 5. **Modo Offline con Sincronización Automática**:
    - Cacheo local de gastos con SQLite o AsyncStorage para permitir registrar gastos aunque el usuario no tenga internet en el momento de la compra.
+
